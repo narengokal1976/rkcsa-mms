@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import appIcon from './icon.png'
 
 // ============================================================
 //  RKCSA MMS — Maintenance Management System
@@ -374,7 +375,7 @@ export default function App() {
       <>
         <style>{css}</style>
         <div className="pl">
-          <div className="pli"><Icon name="wrench" size={28} color="#fff" /></div>
+          <div className="pli"><img src={appIcon} alt="RKCSA MMS" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 18 }} /></div>
           <div className="plt">RKCSA MMS</div>
           <div className="spin" />
         </div>
@@ -456,7 +457,7 @@ function LoginScreen(props) {
   return (
     <div className="lp">
       <div className="lc">
-        <div className="le"><Icon name="shield" size={32} color="#fff" /></div>
+        <div className="le" style={{ background: 'transparent', boxShadow: 'none', padding: 0, overflow: 'hidden' }}><img src={appIcon} alt="RKCSA MMS" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} /></div>
         <div className="lh">RKCSA MMS</div>
         <div className="ls">Maintenance Management System</div>
         <hr className="ld" />
@@ -499,7 +500,7 @@ function Sidebar(props) {
   return (
     <aside className="sb">
       <div className="sbh">
-        <div className="sbl"><Icon name="wrench" size={20} color="#fff" /></div>
+        <div className="sbl" style={{ background: 'transparent', boxShadow: 'none', padding: 2, overflow: 'hidden' }}><img src={appIcon} alt="RKCSA MMS" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 10 }} /></div>
         <div className="sbn">RKCSA MMS</div>
         <div className="sbt">Maintenance System</div>
       </div>
