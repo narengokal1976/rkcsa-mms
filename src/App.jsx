@@ -21,6 +21,14 @@ var STATUS_COLORS = {
   'Resolved / Closed': { bg: '#E8F5E9', text: '#1B5E20', dot: '#388E3C' },
 }
 
+// ── Role helpers ──────────────────────────────────────────────
+function isManagerOrAdmin(role) {
+  return role === 'Admin' || role === 'Manager'
+}
+function isAdmin(role) {
+  return role === 'Admin'
+}
+
 // ── Supabase helpers ──────────────────────────────────────────
 var db = {
   signIn: function(email, password) {
@@ -335,7 +343,12 @@ export default function App() {
   function loadIssues() {
     setIssuesLoading(true)
     db.getIssues().then(function(result) {
-      setIssues(result.data || [])
+      var all = result.data || []
+      // Reporters only see issues they logged themselves
+      if (profile && !isManagerOrAdmin(profile.role) && profile.role !== 'Technician') {
+        all = all.filter(function(i) { return i.reported_by === profile.id })
+      }
+      setIssues(all)
       setIssuesLoading(false)
     })
   }
@@ -385,6 +398,7 @@ export default function App() {
             {view === 'dashboard' && <Dashboard issues={issues} loading={issuesLoading} openIssue={openIssue} navigate={navigate} />}
             {view === 'issues' && <IssuesList issues={issues} loading={issuesLoading} openIssue={openIssue} />}
             {view === 'new' && <NewIssueForm profile={profile} profiles={profiles} onSuccess={function() { loadIssues(); navigate('issues') }} />}
+            {view === 'users' && isAdmin(profile.role) && <ManageUsers profiles={profiles} onRefresh={loadProfiles} />}
             {view === 'detail' && selectedIssue && (
               <IssueDetail
                 issue={selectedIssue}
@@ -472,6 +486,9 @@ function Sidebar(props) {
     { id: 'issues',    label: 'All Issues',   icon: 'list'   },
     { id: 'new',       label: 'Log New Issue',icon: 'plus'   },
   ]
+  if (isAdmin(profile.role)) {
+    nav.push({ id: 'users', label: 'Manage Users', icon: 'assign' })
+  }
   return (
     <aside className="sb">
       <div className="sbh">
@@ -510,6 +527,7 @@ function Topbar(props) {
     dashboard: { title: 'Dashboard',      sub: 'Overview of all maintenance issues'  },
     issues:    { title: 'All Issues',     sub: 'Browse and manage reported issues'   },
     new:       { title: 'Log New Issue',  sub: 'Report a new maintenance problem'    },
+    users:     { title: 'Manage Users',   sub: 'View and update user roles'          },
     detail:    { title: issue ? issue.ref_no : 'Issue', sub: issue ? issue.title : '' },
   }
   var t = map[view] || map.dashboard
@@ -764,21 +782,30 @@ function IssueDetail(props) {
 
       <div className="card cp" style={{ marginBottom: 16 }}>
         <div className="ctt">Update Status {saving && <span className="spin dk" style={{ marginLeft: 8 }} />}</div>
-        <div className="ss">
-          {STATUS_FLOW.map(function(s) {
-            return <div key={s} className={'seg' + (issue.status === s ? ' on' : '')} onClick={function() { changeStatus(s) }}>{s}</div>
-          })}
-        </div>
-        <div>
-          <div className="secl" style={{ marginBottom: 8 }}>Assign To</div>
-          <div style={{ display: 'flex', gap: 10 }}>
-            <select className="sl2" style={{ flex: 1 }} value={assignedTo} onChange={function(e) { setAssignedTo(e.target.value) }}>
-              <option value="">— Unassigned —</option>
-              {profiles.map(function(p) { return <option key={p.id} value={p.id}>{p.full_name} ({p.role})</option> })}
-            </select>
-            <button className="bs" onClick={saveAssignment} disabled={saving}>Save</button>
+        {isManagerOrAdmin(profile.role) ? (
+          <>
+            <div className="ss">
+              {STATUS_FLOW.map(function(s) {
+                return <div key={s} className={'seg' + (issue.status === s ? ' on' : '')} onClick={function() { changeStatus(s) }}>{s}</div>
+              })}
+            </div>
+            <div>
+              <div className="secl" style={{ marginBottom: 8 }}>Assign To</div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <select className="sl2" style={{ flex: 1 }} value={assignedTo} onChange={function(e) { setAssignedTo(e.target.value) }}>
+                  <option value="">— Unassigned —</option>
+                  {profiles.map(function(p) { return <option key={p.id} value={p.id}>{p.full_name} ({p.role})</option> })}
+                </select>
+                <button className="bs" onClick={saveAssignment} disabled={saving}>Save</button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <div style={{ background: 'var(--pa)', borderRadius: 'var(--rs)', padding: '14px 16px', fontSize: 13, color: 'var(--tm)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Icon name="shield" size={15} color="var(--tm)" />
+            Only Managers and Admins can change the status or assignment of issues.
           </div>
-        </div>
+        )}
       </div>
 
       <div className="card cp">
@@ -913,6 +940,73 @@ function NewIssueForm(props) {
           ⚠️ Please fill in the Issue Title and Description to submit
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Manage Users (Admin only) ─────────────────────────────────
+function ManageUsers(props) {
+  var profiles = props.profiles
+  var onRefresh = props.onRefresh
+  var [saving, setSaving] = useState(null)
+  var [saved, setSaved] = useState(null)
+
+  function updateRole(userId, newRole) {
+    setSaving(userId)
+    supabase.from('profiles').update({ role: newRole }).eq('id', userId).then(function(result) {
+      setSaving(null)
+      if (!result.error) {
+        setSaved(userId)
+        onRefresh()
+        setTimeout(function() { setSaved(null) }, 2000)
+      }
+    })
+  }
+
+  var roleOptions = ['Admin', 'Manager', 'Technician', 'Reporter']
+  var roleColors = {
+    'Admin':      { bg: '#F3E5F5', text: '#6A1B9A' },
+    'Manager':    { bg: '#E3F2FD', text: '#0D47A1' },
+    'Technician': { bg: '#E8F5E9', text: '#1B5E20' },
+    'Reporter':   { bg: '#FFF3E0', text: '#BF360C' },
+  }
+
+  return (
+    <div className="fu" style={{ maxWidth: 640 }}>
+      <div className="card cp" style={{ marginBottom: 16 }}>
+        <div style={{ background: 'var(--go-p)', border: '1px solid rgba(201,146,26,.3)', borderRadius: 'var(--rs)', padding: '12px 16px', fontSize: 13, color: 'var(--bk)', marginBottom: 20 }}>
+          <strong>Admin only.</strong> To add new users, go to Supabase → Authentication → Users → Create new user. Their profile will appear here automatically.
+        </div>
+        {profiles.length === 0 && <EmptyState title="No users found" sub="No profiles in the database yet." />}
+        {profiles.map(function(p) {
+          var rc = roleColors[p.role] || roleColors['Reporter']
+          return (
+            <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '14px 0', borderBottom: '1px solid var(--bd)' }}>
+              <div className="av" style={{ width: 40, height: 40, fontSize: 15, flexShrink: 0 }}>{p.full_name.charAt(0).toUpperCase()}</div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 14, color: 'var(--bk)' }}>{p.full_name}</div>
+                <div style={{ fontSize: 12, color: 'var(--tm)', marginTop: 2 }}>{p.id.slice(0, 8)}…</div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <select
+                  className="sl2"
+                  style={{ fontSize: 13, padding: '7px 10px', background: rc.bg, color: rc.text, borderColor: rc.bg, fontWeight: 600 }}
+                  value={p.role}
+                  onChange={function(e) { updateRole(p.id, e.target.value) }}
+                  disabled={saving === p.id}
+                >
+                  {roleOptions.map(function(r) { return <option key={r} value={r}>{r}</option> })}
+                </select>
+                {saving === p.id && <div className="spin dk" />}
+                {saved === p.id && <Icon name="check" size={16} color="#388E3C" />}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--tm)', textAlign: 'center' }}>
+        Role changes take effect immediately on next login.
+      </div>
     </div>
   )
 }
