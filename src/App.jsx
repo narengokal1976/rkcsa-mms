@@ -308,11 +308,21 @@ export default function App() {
   var [profile, setProfile] = useState(null)
   var [loading, setLoading] = useState(true)
   var [view, setView] = useState('dashboard')
-  var [issues, setIssues] = useState([])
+  var [allIssues, setAllIssues] = useState([])
   var [profiles, setProfiles] = useState([])
   var [selectedId, setSelectedId] = useState(null)
   var [issuesLoading, setIssuesLoading] = useState(false)
   var configured = SUPABASE_URL !== 'https://YOUR_PROJECT_ID.supabase.co'
+
+  // ── Derive visible issues from profile + allIssues together ──
+  // This runs every time EITHER profile OR allIssues changes,
+  // so there is no race condition between the two loading.
+  var issues = allIssues.filter(function(i) {
+    if (!profile) return false
+    if (isManagerOrAdmin(profile.role) || profile.role === 'Technician') return true
+    // Reporter: only their own issues
+    return i.reported_by === profile.id
+  })
 
   useEffect(function() {
     supabase.auth.getSession().then(function(result) {
@@ -343,12 +353,7 @@ export default function App() {
   function loadIssues() {
     setIssuesLoading(true)
     db.getIssues().then(function(result) {
-      var all = result.data || []
-      // Reporters only see issues they logged themselves
-      if (profile && !isManagerOrAdmin(profile.role) && profile.role !== 'Technician') {
-        all = all.filter(function(i) { return i.reported_by === profile.id })
-      }
-      setIssues(all)
+      setAllIssues(result.data || [])
       setIssuesLoading(false)
     })
   }
@@ -406,7 +411,7 @@ export default function App() {
                 profiles={profiles}
                 onBack={function() { navigate('issues') }}
                 onUpdate={function(updated) {
-                  setIssues(function(prev) { return prev.map(function(i) { return i.id === updated.id ? updated : i }) })
+                  setAllIssues(function(prev) { return prev.map(function(i) { return i.id === updated.id ? updated : i }) })
                   setSelectedId(updated.id)
                 }}
               />
