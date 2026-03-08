@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import appIcon from './icon.png'
+import appIcon from './icon.PNG'
 
 // ============================================================
 //  RKCSA MMS — Maintenance Management System
