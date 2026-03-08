@@ -312,6 +312,7 @@ export default function App() {
   var [profiles, setProfiles] = useState([])
   var [selectedId, setSelectedId] = useState(null)
   var [issuesLoading, setIssuesLoading] = useState(false)
+  var [statusFilter, setStatusFilter] = useState('All')
   var configured = SUPABASE_URL !== 'https://YOUR_PROJECT_ID.supabase.co'
 
   // ── Derive visible issues from profile + allIssues together ──
@@ -366,6 +367,7 @@ export default function App() {
 
   function openIssue(id) { setSelectedId(id); setView('detail') }
   function navigate(v) { setView(v); setSelectedId(null) }
+  function navigateFiltered(status) { setStatusFilter(status); setView('issues'); setSelectedId(null) }
 
   if (loading) {
     return (
@@ -400,8 +402,8 @@ export default function App() {
           <Topbar view={view} issue={selectedIssue} onLogout={function() { db.signOut() }} />
           <div className="ct">
             {!configured && <ConfigBanner />}
-            {view === 'dashboard' && <Dashboard issues={issues} loading={issuesLoading} openIssue={openIssue} navigate={navigate} />}
-            {view === 'issues' && <IssuesList issues={issues} loading={issuesLoading} openIssue={openIssue} />}
+            {view === 'dashboard' && <Dashboard issues={issues} loading={issuesLoading} openIssue={openIssue} navigate={navigate} navigateFiltered={navigateFiltered} />}
+            {view === 'issues' && <IssuesList issues={issues} loading={issuesLoading} openIssue={openIssue} initialStatus={statusFilter} />}
             {view === 'new' && <NewIssueForm profile={profile} profiles={profiles} onSuccess={function() { loadIssues(); navigate('issues') }} />}
             {view === 'users' && isAdmin(profile.role) && <ManageUsers profiles={profiles} onRefresh={loadProfiles} />}
             {view === 'detail' && selectedIssue && (
@@ -585,6 +587,7 @@ function Dashboard(props) {
   var loading = props.loading
   var openIssue = props.openIssue
   var navigate = props.navigate
+  var navigateFiltered = props.navigateFiltered
   var counts = {}
   STATUS_FLOW.forEach(function(s) { counts[s] = issues.filter(function(i) { return i.status === s }).length })
   var recent = issues.slice(0, 5)
@@ -594,25 +597,44 @@ function Dashboard(props) {
         {STATUS_FLOW.map(function(s) {
           var c = STATUS_COLORS[s]
           return (
-            <div key={s} className="sc">
+            <div
+              key={s}
+              className="sc"
+              onClick={function() { navigateFiltered(s) }}
+              style={{ cursor: 'pointer', transition: 'transform .15s, box-shadow .15s' }}
+              onMouseEnter={function(e) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(44,24,16,0.18)' }}
+              onMouseLeave={function(e) { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
+            >
               <div className="sl">{s}</div>
               <div className="sv">{counts[s]}</div>
               <div className="sp" style={{ background: c.bg, color: c.text }}>
                 <div className="dt" style={{ background: c.dot }} />
                 {counts[s] === 1 ? 'issue' : 'issues'}
               </div>
+              <div style={{ fontSize: 11, color: 'var(--tm)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+                View <Icon name="back" size={10} color="var(--tm)" />
+              </div>
             </div>
           )
         })}
-        <div className="sc">
+        <div
+          className="sc"
+          onClick={function() { navigateFiltered('All') }}
+          style={{ cursor: 'pointer', transition: 'transform .15s, box-shadow .15s' }}
+          onMouseEnter={function(e) { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(44,24,16,0.18)' }}
+          onMouseLeave={function(e) { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '' }}
+        >
           <div className="sl">Total</div>
           <div className="sv">{issues.length}</div>
           <div className="sp" style={{ background: 'var(--pa)', color: 'var(--bk)' }}>all time</div>
+          <div style={{ fontSize: 11, color: 'var(--tm)', marginTop: 8, display: 'flex', alignItems: 'center', gap: 4 }}>
+            View all <Icon name="back" size={10} color="var(--tm)" />
+          </div>
         </div>
       </div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
         <div style={{ fontFamily: 'var(--fd)', fontSize: 19, fontWeight: 700, color: 'var(--bk)' }}>Recent Issues</div>
-        <button className="bs" onClick={function() { navigate('issues') }}>View All</button>
+        <button className="bs" onClick={function() { navigateFiltered('All') }}>View All</button>
       </div>
       {loading && <LoadingCards />}
       {!loading && recent.map(function(issue) { return <IssueCard key={issue.id} issue={issue} onClick={function() { openIssue(issue.id) }} /> })}
@@ -626,8 +648,9 @@ function IssuesList(props) {
   var issues = props.issues
   var loading = props.loading
   var openIssue = props.openIssue
+  var initialStatus = props.initialStatus || 'All'
   var [q, setQ] = useState('')
-  var [st, setSt] = useState('All')
+  var [st, setSt] = useState(initialStatus)
   var [cat, setCat] = useState('All')
 
   var filtered = issues.filter(function(i) {
