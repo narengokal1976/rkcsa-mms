@@ -245,14 +245,23 @@ button,input,select,textarea{font-family:var(--fb)}
 .pli{width:68px;height:68px;border-radius:18px;background:linear-gradient(135deg,var(--go),var(--go-l));display:flex;align-items:center;justify-content:center;box-shadow:0 8px 28px rgba(201,146,26,.5);animation:pulse 2s infinite}
 .plt{font-family:var(--fd);font-size:19px;font-weight:700;color:rgba(255,255,255,.8)}
 
+.bnav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--cr-d);border-top:1px solid rgba(255,255,255,.1);z-index:100;padding:0}
+.bnav-inner{display:flex;align-items:stretch}
+.bnav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 4px;background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,.5);font-size:10px;font-weight:600;transition:color .15s;letter-spacing:.03em;border-top:2px solid transparent}
+.bnav-btn.ac{color:var(--go-l);border-top-color:var(--go-l)}
+.bnav-btn:hover{color:rgba(255,255,255,.85)}
+.bnav-btn.new-btn{color:#fff;background:var(--cr);margin:8px 6px;border-radius:var(--rs);border-top:none;flex:1.2}
+
 @media(max-width:768px){
   .sb{display:none}
-  .ct{padding:14px}
+  .bnav{display:block}
+  .ct{padding:14px;padding-bottom:90px}
   .tb{padding:12px 16px}
   .fgr{grid-template-columns:1fr}
   .ig{grid-template-columns:1fr}
   .sg{grid-template-columns:1fr 1fr}
   .seg{font-size:9px;padding:8px 2px}
+  .mn{padding-bottom:0}
 }
 `
 
@@ -370,7 +379,7 @@ export default function App() {
       <div className="lay">
         <Sidebar profile={profile} view={view} navigate={navigate} onLogout={function() { db.signOut() }} />
         <div className="mn">
-          <Topbar view={view} issue={selectedIssue} />
+          <Topbar view={view} issue={selectedIssue} onLogout={function() { db.signOut() }} />
           <div className="ct">
             {!configured && <ConfigBanner />}
             {view === 'dashboard' && <Dashboard issues={issues} loading={issuesLoading} openIssue={openIssue} navigate={navigate} />}
@@ -389,6 +398,7 @@ export default function App() {
               />
             )}
           </div>
+          <BottomNav view={view} navigate={navigate} />
         </div>
       </div>
     </>
@@ -495,6 +505,7 @@ function Sidebar(props) {
 function Topbar(props) {
   var view = props.view
   var issue = props.issue
+  var onLogout = props.onLogout
   var map = {
     dashboard: { title: 'Dashboard',      sub: 'Overview of all maintenance issues'  },
     issues:    { title: 'All Issues',     sub: 'Browse and manage reported issues'   },
@@ -508,11 +519,44 @@ function Topbar(props) {
         <div className="tbt">{t.title}</div>
         <div className="tbs">{t.sub}</div>
       </div>
+      <button className="bs" style={{ display:'flex', alignItems:'center', gap:7, fontSize:13, padding:'8px 14px' }} onClick={onLogout}>
+        <Icon name="logout" size={15} color="currentColor" /> Sign Out
+      </button>
     </div>
   )
 }
 
-// ── Dashboard ─────────────────────────────────────────────────
+// ── Bottom Nav (mobile only) ──────────────────────────────────
+function BottomNav(props) {
+  var view = props.view
+  var navigate = props.navigate
+  var nav = [
+    { id: 'dashboard', label: 'Dashboard', icon: 'grid'   },
+    { id: 'issues',    label: 'Issues',    icon: 'list'   },
+    { id: 'new',       label: '+ Log Issue', icon: 'plus' },
+  ]
+  return (
+    <div className="bnav">
+      <div className="bnav-inner">
+        {nav.map(function(item) {
+          var isNew = item.id === 'new'
+          return (
+            <button
+              key={item.id}
+              className={'bnav-btn' + (view === item.id ? ' ac' : '') + (isNew ? ' new-btn' : '')}
+              onClick={function() { navigate(item.id) }}
+            >
+              <Icon name={item.icon} size={isNew ? 20 : 18} color="currentColor" />
+              {item.label}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+
 function Dashboard(props) {
   var issues = props.issues
   var loading = props.loading
@@ -850,11 +894,11 @@ function NewIssueForm(props) {
           <div className="cl2">{desc.length}/1000</div>
         </div>
         <div className="ff fu2">
-          <label className="fl">Photo (optional)</label>
+          <label className="fl">Photo (optional) — tap the box below to attach</label>
           <div className={'uz' + (preview ? ' fi2' : '')} onClick={function() { fileRef.current.click() }}>
             {preview
               ? <img src={preview} alt="Preview" />
-              : <><Icon name="camera" size={30} color="var(--tm)" /><div className="ul">Tap to attach a photo</div><div className="uh">JPG, PNG or WEBP — max 10MB</div></>
+              : <><Icon name="camera" size={30} color="var(--tm)" /><div className="ul">Tap / Click here to attach a photo</div><div className="uh">JPG, PNG or WEBP — max 10MB</div></>
             }
           </div>
           <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleFile} />
@@ -864,6 +908,11 @@ function NewIssueForm(props) {
       <button className="bp" style={{ marginTop: 10 }} onClick={submit} disabled={busy || !title.trim() || !desc.trim()}>
         {busy ? <><div className="spin" /> Submitting…</> : 'Submit Issue'}
       </button>
+      {(!title.trim() || !desc.trim()) && (
+        <div style={{ fontSize: 12, color: 'var(--tm)', marginTop: 8, textAlign: 'center' }}>
+          ⚠️ Please fill in the Issue Title and Description to submit
+        </div>
+      )}
     </div>
   )
 }
@@ -893,4 +942,3 @@ function EmptyState(props) {
     </div>
   )
 }
-
