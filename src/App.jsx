@@ -142,7 +142,7 @@ button,input,select,textarea{font-family:var(--fb)}
 .sbh{padding:26px 20px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
 .sbl{width:88px;height:88px;border-radius:12px;background:linear-gradient(135deg,var(--go),var(--go-l));display:flex;align-items:center;justify-content:center;margin-bottom:12px;box-shadow:0 4px 14px rgba(201,146,26,.4)}
 .sbn{font-family:var(--fd);font-size:18px;font-weight:800;color:#fff;line-height:1.15}
-.sbt{font-size:10px;color:rgba(255,255,255,.4);margin-top:3px;letter-spacing:.12em;text-transform:uppercase}
+.sbt{font-size:10px;color:rgba(255,255,255,1);margin-top:3px;letter-spacing:.12em;text-transform:uppercase}
 .nav{flex:1;padding:12px 8px;display:flex;flex-direction:column;gap:3px}
 .nb{display:flex;align-items:center;gap:11px;padding:11px 14px;border-radius:var(--rs);cursor:pointer;color:rgba(255,255,255,.5);font-size:14px;font-weight:500;border:none;background:transparent;width:100%;text-align:left;transition:background .15s,color .15s}
 .nb:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.85)}
@@ -150,7 +150,7 @@ button,input,select,textarea{font-family:var(--fb)}
 .sbf{padding:15px 18px;border-top:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:11px}
 .av{width:36px;height:36px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,var(--go),var(--cr-l));display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;color:#fff}
 .un{font-size:13px;font-weight:600;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ur{font-size:11px;color:rgba(255,255,255,.4)}
+.ur{font-size:11px;color:rgba(255,255,255,1)}
 .ib2{background:transparent;border:none;cursor:pointer;color:rgba(255,255,255,.35);padding:4px;border-radius:var(--rx);transition:color .15s}
 .ib2:hover{color:rgba(255,255,255,.8)}
 
@@ -474,10 +474,6 @@ function LoginScreen(props) {
         <button className="bp" onClick={submit} disabled={busy || !email || !password}>
           {busy ? <><div className="spin" /> Signing in…</> : 'Sign In'}
         </button>
-        <div className="ib">
-          <strong>How to add users</strong>
-          Supabase → Authentication → Users → Invite User. Enter their email and they will receive a setup link.
-        </div>
       </div>
     </div>
   )
